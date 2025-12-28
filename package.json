@@ -1,0 +1,42 @@
+{
+  "name": "kipio",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.1",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,astro,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,astro,json,css,md}\"",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "dev:web": "turbo run dev --filter=@kipio/web",
+    "dev:api": "turbo run dev --filter=@kipio/api",
+    "build:web": "turbo run build --filter=@kipio/web",
+    "build:api": "turbo run build --filter=@kipio/api"
+  },
+  "devDependencies": {
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.7.4",
+    "prettier-plugin-astro": "^0.14.1",
+    "turbo": "^2.7.2",
+    "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,astro}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=24.12.0",
+    "pnpm": ">=9.0.0"
+  }
+}
