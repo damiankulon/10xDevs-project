@@ -9,5 +9,5 @@ alwaysApply: false
 - Follow Supabase guidelines for security and performance.
 - Use Zod schemas to validate data exchanged with the backend.
 - Use supabase from context.locals in Astro routes instead of importing supabaseClient directly
-- Use SupabaseClient type from `src/db/supabase.client.ts`, not from `@supabase/supabase-js`
+- Use SupabaseClient type from `apps\web\src\db\supabase.client.ts`, not from `@supabase/supabase-js`
 - Use as API nestjs application located in `apps/api` folder
