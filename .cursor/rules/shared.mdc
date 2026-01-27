@@ -1,0 +1,53 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# AI Rules for {app-name}
+
+{project-description}
+
+## Tech Stack
+
+- NestJS 11 - backend API
+- Supabase - database and authentication
+- Astro 5
+- TypeScript 5
+- React 19
+- Tailwind 4
+- Shadcn/ui
+
+## Project Structure
+
+When introducing changes to the project, always follow the directory structure below:
+
+- `./apps` - source code
+- `./apps/api` - NestJS backend application
+- `./apps/web` - Astro frontend applications
+- `./apps/web/src/layouts` - Astro layouts
+- `./apps/web/src/pages` - Astro pages
+- `./apps/web/src/pages/api` - API endpoints
+- `./apps/web/src/middleware/index.ts` - Astro middleware
+- `./apps/web/src/db` - Supabase clients and types
+- `./src/types.ts` - Shared types for backend and frontend (Entities, DTOs)
+- `./apps/web/src/components` - Client-side components written in Astro (static) and React (dynamic)
+- `./apps/web/src/web/components/ui` - Client-side components from Shadcn/ui
+- `./apps/web/src/lib` - Services and helpers 
+- `./apps/web/src/assets` - static internal assets
+- `./apps/web/public` - public assets
+
+When modifying the directory structure, always update this section.
+
+## Coding practices
+
+### Guidelines for clean code
+
+- Use feedback from linters to improve the code when making changes.
+- Prioritize error handling and edge cases.
+- Handle errors and edge cases at the beginning of functions.
+- Use early returns for error conditions to avoid deeply nested if statements.
+- Place the happy path last in the function for improved readability.
+- Avoid unnecessary else statements; use if-return pattern instead.
+- Use guard clauses to handle preconditions and invalid states early.
+- Implement proper error logging and user-friendly error messages.
+- Consider using custom error types or error factories for consistent error handling.
