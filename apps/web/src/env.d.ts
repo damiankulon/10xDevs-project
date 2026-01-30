@@ -2,10 +2,16 @@
 
 import type { SupabaseClient } from './db/supabase.client';
 
+interface AuthUser {
+  id: string;
+  email?: string;
+}
+
 declare global {
   namespace App {
     interface Locals {
       supabase: SupabaseClient;
+      user?: AuthUser;
     }
   }
 }
@@ -13,6 +19,8 @@ declare global {
 interface ImportMetaEnv {
   readonly SUPABASE_URL: string;
   readonly SUPABASE_KEY: string;
+  readonly SUPABASE_JWT_SECRET: string;
+  readonly PUBLIC_API_URL: string;
 }
 
 interface ImportMeta {

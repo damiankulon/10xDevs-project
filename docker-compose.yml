@@ -1,0 +1,34 @@
+# Uruchomienie: skopiuj .env z apps/api/.env.example i apps/web/.env.example,
+# uzupełnij zmienne (Supabase itd.), potem: docker compose up --build
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:4321}
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "4321:4321"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=4321
+      - API_URL=${API_URL:-http://localhost:3001}
+    depends_on:
+      - api
+    restart: unless-stopped
