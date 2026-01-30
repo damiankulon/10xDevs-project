@@ -12,6 +12,7 @@ A Personal Data Warehouse application designed for Power Users, Bio-hackers, and
 - [Project Description](#project-description)
 - [Tech Stack](#tech-stack)
 - [Getting Started Locally](#getting-started-locally)
+- [Running with Docker](#running-with-docker)
 - [Available Scripts](#available-scripts)
 - [Project Scope](#project-scope)
 - [Project Status](#project-status)
@@ -129,6 +130,36 @@ Kipio solves the problem of data fragmentation across multiple rigid application
 
    - Frontend: http://localhost:4321
    - API: http://localhost:3001
+
+## Running with Docker
+
+Projekt można uruchomić w kontenerach Docker (API + Web).
+
+1. **Skonfiguruj zmienne środowiskowe**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Uzupełnij `.env` danymi Supabase i innymi ustawieniami (jak przy uruchomieniu lokalnym).
+
+2. **Zbuduj i uruchom**
+
+   ```bash
+   docker compose up --build
+   ```
+
+   - Frontend: http://localhost:4321
+   - API: http://localhost:3001/api
+
+3. **Opcjonalnie – tylko jedna aplikacja**
+
+   ```bash
+   docker compose up --build api    # tylko API
+   docker compose up --build web    # tylko Web
+   ```
+
+   Kontekst budowania to katalog główny repozytorium; Dockerfile dla API i Web znajdują się w `apps/api/Dockerfile` i `apps/web/Dockerfile`.
 
 ## Available Scripts
 
