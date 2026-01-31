@@ -30,6 +30,7 @@ export interface DashboardHeaderProps {
   onFilterChange: (filter: 'all' | 'own' | 'shared') => void;
   onEditModeToggle: () => void;
   onRefresh: () => void;
+  onCreateTracker?: () => void;
 }
 
 export interface TrackerGridProps {

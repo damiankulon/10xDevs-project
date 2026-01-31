@@ -26,7 +26,17 @@ export function useDashboard(): UseDashboardReturn {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const response = await fetch('/api/dashboard');
+      const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:3001';
+      const token = localStorage.getItem('accessToken');
+
+      const response = await fetch(`${apiUrl}/api/dashboard`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+      });
 
       if (!response.ok) {
         throw new Error('Nie udało się załadować danych');

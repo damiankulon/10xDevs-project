@@ -2,6 +2,8 @@ import { FilterBar } from './FilterBar';
 import { TrackerCounterBadge } from './TrackerCounterBadge';
 import { EditLayoutToggle } from './EditLayoutToggle';
 import { RefreshButton } from './RefreshButton';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 import type { DashboardHeaderProps } from './types';
 
 export function DashboardHeader({
@@ -11,6 +13,7 @@ export function DashboardHeader({
   onFilterChange,
   onEditModeToggle,
   onRefresh,
+  onCreateTracker,
 }: DashboardHeaderProps) {
   return (
     <div className="space-y-6 mb-8">
@@ -27,6 +30,12 @@ export function DashboardHeader({
         </div>
         <div className="flex items-center gap-2">
           <RefreshButton onRefresh={onRefresh} />
+          {onCreateTracker && (
+            <Button onClick={onCreateTracker} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nowy tracker
+            </Button>
+          )}
         </div>
       </div>
 
