@@ -9,8 +9,19 @@ import {
 import { SupabaseService, Tables } from '../supabase';
 import type { Json } from '../supabase/database.types';
 import { CreateTrackerDto } from './dto/create-tracker.dto';
+import { UpdateTrackerDto } from './dto/update-tracker.dto';
+import { TrackerListQueryDto } from './dto/tracker-list-query.dto';
+import { ReorderTrackersDto } from './dto/reorder-trackers.dto';
 import type {
   TrackerStatsResponseDto,
+  TrackerListResponseDto,
+  TrackerDetailResponseDto,
+  TrackerListItemDto,
+  ReorderTrackersResponseDto,
+  LastEntryDto,
+  TrackerStatsDto,
+  TrackerConfig,
+  SharePermission,
   StatsPeriod,
   DataType,
   NumericStatsDto,
@@ -46,6 +57,14 @@ type EntryRow = {
   value_text: string | null;
   recorded_at: string;
 };
+
+/**
+ * Internal type for tracker access information
+ */
+interface TrackerAccessInfo {
+  isOwner: boolean;
+  sharedPermission: SharePermission | null;
+}
 
 @Injectable()
 export class TrackersService {
@@ -175,6 +194,327 @@ export class TrackersService {
   }
 
   /**
+   * Get all trackers for a user with pagination, filtering, and sorting
+   *
+   * @param userId - The ID of the user requesting trackers
+   * @param query - Query parameters for filtering, sorting, and pagination
+   * @returns Paginated list of trackers with metadata
+   */
+  async findAll(
+    userId: string,
+    query: TrackerListQueryDto
+  ): Promise<TrackerListResponseDto> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    const {
+      page = 1,
+      limit = 20,
+      sort_by = 'display_order',
+      sort_order = 'asc',
+      is_active = true,
+      data_type,
+      include_shared = true,
+    } = query;
+
+    // Build base query
+    let trackersQuery = supabase
+      .from('trackers')
+      .select('*', { count: 'exact' })
+      .is('deleted_at', null);
+
+    // Filter by owner or shared trackers
+    if (include_shared) {
+      // Get tracker IDs shared with the user
+      const { data: sharedTrackers } = await supabase
+        .from('tracker_shares')
+        .select('tracker_id')
+        .eq('shared_with_user_id', userId);
+
+      const sharedTrackerIds =
+        (sharedTrackers as { tracker_id: string }[] | null)?.map(
+          (s) => s.tracker_id
+        ) || [];
+
+      // Include owned trackers OR shared trackers
+      if (sharedTrackerIds.length > 0) {
+        trackersQuery = trackersQuery.or(
+          `user_id.eq.${userId},id.in.(${sharedTrackerIds.join(',')})`
+        );
+      } else {
+        trackersQuery = trackersQuery.eq('user_id', userId);
+      }
+    } else {
+      trackersQuery = trackersQuery.eq('user_id', userId);
+    }
+
+    // Apply filters
+    if (is_active !== undefined) {
+      trackersQuery = trackersQuery.eq('is_active', is_active);
+    }
+
+    if (data_type) {
+      trackersQuery = trackersQuery.eq('data_type', data_type);
+    }
+
+    // Apply sorting
+    trackersQuery = trackersQuery.order(sort_by, {
+      ascending: sort_order === 'asc',
+    });
+
+    // Apply pagination
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    trackersQuery = trackersQuery.range(from, to);
+
+    const { data: trackers, error, count } = await trackersQuery;
+
+    if (error) {
+      this.logger.error(`Failed to fetch trackers for user ${userId}`, error);
+      throw new InternalServerErrorException('Failed to fetch trackers');
+    }
+
+    // Get shared tracker IDs for permission checks
+    const { data: shares } = await supabase
+      .from('tracker_shares')
+      .select('tracker_id, permission')
+      .eq('shared_with_user_id', userId);
+
+    const shareMap = new Map<string, SharePermission>();
+    (shares as { tracker_id: string; permission: string }[] | null)?.forEach(
+      (share) => {
+        shareMap.set(share.tracker_id, share.permission as SharePermission);
+      }
+    );
+
+    // Enrich trackers with computed fields
+    const enrichedTrackers: TrackerListItemDto[] = await Promise.all(
+      ((trackers as Tracker[] | null) || []).map(async (tracker) => {
+        const isOwner = tracker.user_id === userId;
+        const sharedPermission = !isOwner
+          ? shareMap.get(tracker.id) || null
+          : null;
+
+        // Get last entry
+        const lastEntry = await this.getLastEntry(tracker.id);
+
+        // Get sparkline data (last 7 values)
+        const sparklineData = await this.getSparklineData(tracker.id);
+
+        const { deleted_at, ...trackerWithoutDeleted } = tracker;
+
+        return {
+          ...trackerWithoutDeleted,
+          config: trackerWithoutDeleted.config as unknown as TrackerConfig,
+          is_owner: isOwner,
+          shared_permission: sharedPermission,
+          last_entry: lastEntry,
+          sparkline_data: sparklineData,
+        };
+      })
+    );
+
+    return {
+      data: enrichedTrackers,
+      pagination: {
+        page,
+        limit,
+        total_items: count || 0,
+        total_pages: Math.ceil((count || 0) / limit),
+      },
+    };
+  }
+
+  /**
+   * Get a single tracker by ID with stats
+   *
+   * @param id - Tracker ID
+   * @param userId - ID of the user requesting the tracker
+   * @returns Tracker details with statistics
+   * @throws NotFoundException if tracker not found
+   * @throws ForbiddenException if user doesn't have access
+   */
+  async findOne(id: string, userId: string): Promise<TrackerDetailResponseDto> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    // Get tracker
+    const tracker = await this.findTrackerById(id);
+    if (!tracker) {
+      throw new NotFoundException('Tracker not found');
+    }
+
+    // Check access
+    const accessInfo = await this.checkAccess(id, userId, tracker.user_id);
+    if (!accessInfo.isOwner && !accessInfo.sharedPermission) {
+      throw new ForbiddenException('Access denied to this tracker');
+    }
+
+    // Calculate stats
+    const stats = await this.calculateStats(id);
+
+    const { deleted_at, ...trackerWithoutDeleted } = tracker;
+
+    return {
+      ...trackerWithoutDeleted,
+      config: trackerWithoutDeleted.config as unknown as TrackerConfig,
+      is_owner: accessInfo.isOwner,
+      shared_permission: accessInfo.sharedPermission,
+      stats,
+    };
+  }
+
+  /**
+   * Update an existing tracker
+   *
+   * @param id - Tracker ID
+   * @param userId - ID of the user updating the tracker
+   * @param updateTrackerDto - Fields to update
+   * @returns Updated tracker
+   * @throws NotFoundException if tracker not found
+   * @throws ForbiddenException if user is not the owner
+   * @throws BadRequestException if validation fails
+   */
+  async update(
+    id: string,
+    userId: string,
+    updateTrackerDto: UpdateTrackerDto
+  ): Promise<TrackerResponseDto> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    // Get tracker and check ownership
+    const tracker = await this.checkOwnership(id, userId);
+
+    // Validate business rules
+    if (updateTrackerDto.unit !== undefined && tracker.data_type !== 'number') {
+      throw new BadRequestException(
+        "unit is only allowed for data_type 'number'"
+      );
+    }
+
+    if (updateTrackerDto.config) {
+      this.validateTrackerConfig(
+        tracker.data_type as DataType,
+        updateTrackerDto.config,
+        updateTrackerDto.unit
+      );
+    }
+
+    if (updateTrackerDto.color) {
+      this.validateColorFormat(updateTrackerDto.color);
+    }
+
+    // Update tracker
+    const { data: updatedTracker, error } = await supabase
+      .from('trackers')
+      .update(updateTrackerDto as never)
+      .eq('id', id)
+      .select()
+      .single<Tracker>();
+
+    if (error) {
+      this.logger.error(`Failed to update tracker ${id}`, error);
+      throw new InternalServerErrorException('Failed to update tracker');
+    }
+
+    if (!updatedTracker) {
+      throw new InternalServerErrorException(
+        'Failed to update tracker - no data returned'
+      );
+    }
+
+    this.logger.log(`Tracker ${id} updated by user ${userId}`);
+
+    const { deleted_at: _, ...trackerResponse } = updatedTracker;
+    return trackerResponse;
+  }
+
+  /**
+   * Soft delete a tracker
+   *
+   * @param id - Tracker ID
+   * @param userId - ID of the user deleting the tracker
+   * @throws NotFoundException if tracker not found
+   * @throws ForbiddenException if user is not the owner
+   */
+  async remove(id: string, userId: string): Promise<void> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    // Check ownership
+    await this.checkOwnership(id, userId);
+
+    // Soft delete tracker
+    const { error } = await supabase
+      .from('trackers')
+      .update({ deleted_at: new Date().toISOString() } as never)
+      .eq('id', id);
+
+    if (error) {
+      this.logger.error(`Failed to delete tracker ${id}`, error);
+      throw new InternalServerErrorException('Failed to delete tracker');
+    }
+
+    this.logger.log(`Tracker ${id} deleted by user ${userId}`);
+  }
+
+  /**
+   * Reorder multiple trackers
+   *
+   * @param userId - ID of the user reordering trackers
+   * @param reorderDto - Array of tracker IDs with new display orders
+   * @returns Confirmation message with update count
+   * @throws ForbiddenException if user doesn't own all trackers
+   */
+  async reorder(
+    userId: string,
+    reorderDto: ReorderTrackersDto
+  ): Promise<ReorderTrackersResponseDto> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    const trackerIds = reorderDto.order.map((item) => item.id);
+
+    // Verify ownership of all trackers
+    const { data: trackers, error } = await supabase
+      .from('trackers')
+      .select('id, user_id')
+      .in('id', trackerIds)
+      .is('deleted_at', null);
+
+    if (error) {
+      this.logger.error('Failed to fetch trackers for reordering', error);
+      throw new InternalServerErrorException('Failed to fetch trackers');
+    }
+
+    // Check if all trackers belong to the user
+    const notOwned = (
+      trackers as { id: string; user_id: string }[] | null
+    )?.filter((t) => t.user_id !== userId);
+    if (notOwned && notOwned.length > 0) {
+      throw new ForbiddenException(
+        'You do not own all trackers in the reorder list'
+      );
+    }
+
+    // Update display orders
+    let updatedCount = 0;
+    for (const item of reorderDto.order) {
+      const { error: updateError } = await supabase
+        .from('trackers')
+        .update({ display_order: item.display_order } as never)
+        .eq('id', item.id);
+
+      if (!updateError) {
+        updatedCount++;
+      }
+    }
+
+    this.logger.log(`Reordered ${updatedCount} trackers for user ${userId}`);
+
+    return {
+      message: 'Tracker order updated successfully',
+      updated_count: updatedCount,
+    };
+  }
+
+  /**
    * Get detailed statistics for a specific tracker
    *
    * @param userId - The ID of the user requesting stats
@@ -271,6 +611,209 @@ export class TrackersService {
       .maybeSingle();
 
     return data !== null;
+  }
+
+  /**
+   * Check access and return permission info
+   */
+  private async checkAccess(
+    trackerId: string,
+    userId: string,
+    ownerId: string
+  ): Promise<TrackerAccessInfo> {
+    const isOwner = userId === ownerId;
+
+    if (isOwner) {
+      return { isOwner: true, sharedPermission: null };
+    }
+
+    const supabase = this.supabaseService.getAdminClient();
+    const { data: share } = await supabase
+      .from('tracker_shares')
+      .select('permission')
+      .eq('tracker_id', trackerId)
+      .eq('shared_with_user_id', userId)
+      .maybeSingle();
+
+    const typedShare = share as { permission: string } | null;
+
+    return {
+      isOwner: false,
+      sharedPermission: typedShare
+        ? (typedShare.permission as SharePermission)
+        : null,
+    };
+  }
+
+  /**
+   * Check if user owns a tracker (throw if not)
+   */
+  private async checkOwnership(
+    trackerId: string,
+    userId: string
+  ): Promise<Tracker> {
+    const tracker = await this.findTrackerById(trackerId);
+    if (!tracker) {
+      throw new NotFoundException('Tracker not found');
+    }
+
+    if (tracker.user_id !== userId) {
+      throw new ForbiddenException('You are not the owner of this tracker');
+    }
+
+    return tracker;
+  }
+
+  /**
+   * Calculate basic stats for a tracker
+   */
+  private async calculateStats(trackerId: string): Promise<TrackerStatsDto> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    const { data: entries, error } = await supabase
+      .from('entries')
+      .select('id, recorded_at')
+      .eq('tracker_id', trackerId)
+      .is('deleted_at', null)
+      .order('recorded_at', { ascending: true });
+
+    if (error) {
+      this.logger.error(
+        `Failed to fetch entries for tracker ${trackerId}`,
+        error
+      );
+      return {
+        total_entries: 0,
+        first_entry_at: null,
+        last_entry_at: null,
+      };
+    }
+
+    const typedEntries = entries as
+      | { id: string; recorded_at: string }[]
+      | null;
+
+    if (!typedEntries || typedEntries.length === 0) {
+      return {
+        total_entries: 0,
+        first_entry_at: null,
+        last_entry_at: null,
+      };
+    }
+
+    return {
+      total_entries: typedEntries.length,
+      first_entry_at: typedEntries[0].recorded_at,
+      last_entry_at: typedEntries[typedEntries.length - 1].recorded_at,
+    };
+  }
+
+  /**
+   * Get the last entry for a tracker
+   */
+  private async getLastEntry(trackerId: string): Promise<LastEntryDto | null> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    const { data: entry } = await supabase
+      .from('entries')
+      .select('value_number, value_boolean, value_text, recorded_at')
+      .eq('tracker_id', trackerId)
+      .is('deleted_at', null)
+      .order('recorded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const typedEntry = entry as {
+      value_number: number | null;
+      value_boolean: boolean | null;
+      value_text: string | null;
+      recorded_at: string;
+    } | null;
+
+    if (!typedEntry) {
+      return null;
+    }
+
+    // Determine value based on available fields
+    const value =
+      typedEntry.value_number ??
+      typedEntry.value_boolean ??
+      typedEntry.value_text ??
+      '';
+
+    return {
+      value,
+      recorded_at: typedEntry.recorded_at,
+    };
+  }
+
+  /**
+   * Get sparkline data (last 7 values) for a tracker
+   */
+  private async getSparklineData(trackerId: string): Promise<number[]> {
+    const supabase = this.supabaseService.getAdminClient();
+
+    const { data: entries } = await supabase
+      .from('entries')
+      .select('value_number, value_boolean')
+      .eq('tracker_id', trackerId)
+      .is('deleted_at', null)
+      .order('recorded_at', { ascending: false })
+      .limit(7);
+
+    const typedEntries = entries as
+      | {
+          value_number: number | null;
+          value_boolean: boolean | null;
+        }[]
+      | null;
+
+    if (!typedEntries || typedEntries.length === 0) {
+      return [];
+    }
+
+    // Reverse to get chronological order
+    return typedEntries.reverse().map((e) => {
+      if (e.value_number !== null) return e.value_number;
+      if (e.value_boolean !== null) return e.value_boolean ? 1 : 0;
+      return 0;
+    });
+  }
+
+  /**
+   * Validate tracker configuration
+   */
+  private validateTrackerConfig(
+    dataType: DataType,
+    config: unknown,
+    unit?: string
+  ): void {
+    if (dataType !== 'number' && unit) {
+      throw new BadRequestException(
+        "unit is only allowed for data_type 'number'"
+      );
+    }
+
+    if (dataType === 'scale') {
+      const scaleConfig = config as { min?: number; max?: number };
+      if (
+        typeof scaleConfig.min !== 'number' ||
+        typeof scaleConfig.max !== 'number'
+      ) {
+        throw new BadRequestException(
+          "config must include min and max for data_type 'scale'"
+        );
+      }
+    }
+  }
+
+  /**
+   * Validate color format
+   */
+  private validateColorFormat(color?: string): void {
+    if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      throw new BadRequestException('color must be in hex format (#RRGGBB)');
+    }
   }
 
   /**
