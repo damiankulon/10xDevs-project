@@ -100,15 +100,6 @@ e2e/
 └── **/*.spec.ts                   # Playwright E2E tests
 ```
 
-## Coverage Thresholds
-
-Both Jest and Vitest are configured with 80% coverage thresholds:
-
-- Branches: 80%
-- Functions: 80%
-- Lines: 80%
-- Statements: 80%
-
 ## Configuration Files
 
 - `apps/api/jest.config.ts` - Jest configuration

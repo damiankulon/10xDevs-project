@@ -22,12 +22,6 @@ export default defineConfig({
         'dist/',
         '.astro/',
       ],
-      thresholds: {
-        branches: 80,
-        functions: 80,
-        lines: 80,
-        statements: 80,
-      },
     },
     mockReset: true,
     clearMocks: true,

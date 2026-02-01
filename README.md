@@ -141,8 +141,8 @@ Kipio solves the problem of data fragmentation across multiple rigid application
    pnpm dev
    ```
 
-   - Frontend: http://localhost:4321
-   - API: http://localhost:3001
+   - Frontend: http://localhost:8080
+   - API: http://localhost:3000
 
 ## Running with Docker
 
@@ -191,7 +191,7 @@ Ta metoda wymaga manualnego zbudowania ka≈ºdego obrazu i przekazania zmiennych ≈
     ```bash
     # Uruchamianie kontenera API na porcie 3000
     docker run -d -p 3000:3000 \
-      -e "PORT=3001" \
+      -e "PORT=3000" \
       -e "NODE_ENV=production" \
       -e "FRONTEND_URL=http://localhost:8080" \
       -e "SUPABASE_URL=<TWOJE_ZMIENNE>" \
@@ -258,15 +258,6 @@ pnpm test:e2e
 pnpm test:e2e:ui
 pnpm test:e2e:debug
 ```
-
-### Coverage Requirements
-
-Both Jest and Vitest are configured with **80% coverage thresholds**:
-
-- Branches: 80%
-- Functions: 80%
-- Lines: 80%
-- Statements: 80%
 
 ### Documentation
 
