@@ -26,7 +26,7 @@ export function useDashboard(): UseDashboardReturn {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('accessToken');
 
       const response = await fetch(`${apiUrl}/api/dashboard`, {

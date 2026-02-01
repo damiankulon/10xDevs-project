@@ -1012,7 +1012,7 @@ ThrottlerModule.forRoot([
        unit: 'kg',
      });
 
-     const res = http.post('http://localhost:3001/api/trackers', payload, {
+     const res = http.post('http://localhost:3000/api/trackers', payload, {
        headers: {
          'Content-Type': 'application/json',
          Authorization: `Bearer ${__ENV.JWT_TOKEN}`,

@@ -69,6 +69,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build shared package
+        run: pnpm --filter @kipio/shared build
+
       - name: Run backend unit tests
         run: pnpm --filter @kipio/api test:cov
 
@@ -106,6 +109,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @kipio/shared build
 
       - name: Run frontend unit tests
         run: pnpm --filter @kipio/web test:coverage

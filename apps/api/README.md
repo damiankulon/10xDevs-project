@@ -79,7 +79,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 JWT_SECRET=your_jwt_secret
 
 # Server Configuration
-PORT=3001
+PORT=3000
 NODE_ENV=development
 ```
 

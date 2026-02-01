@@ -1,5 +1,5 @@
 // Direct URL to NestJS backend (CORS is configured in NestJS)
-const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:3000';
 
 interface ApiError {
   message: string;
