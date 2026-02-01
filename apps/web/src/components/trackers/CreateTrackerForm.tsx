@@ -62,6 +62,24 @@ export function CreateTrackerForm({
     setError(null);
 
     try {
+      // Additional validation for scale type
+      if (data.data_type === DataType.SCALE) {
+        if (
+          !data.config ||
+          typeof data.config.min !== 'number' ||
+          typeof data.config.max !== 'number'
+        ) {
+          setError('Dla typu Skala wymagane są wartości minimum i maximum');
+          setIsSubmitting(false);
+          return;
+        }
+        if (data.config.min >= data.config.max) {
+          setError('Wartość minimalna musi być mniejsza niż maksymalna');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Prepare the request payload
       const payload: CreateTrackerDto = {
         name: data.name.trim(),
