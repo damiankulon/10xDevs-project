@@ -17,13 +17,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   email: z.string().email('Nieprawidłowy adres email'),
-  password: z
-    .string()
-    .min(8, 'Hasło musi mieć minimum 8 znaków')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Hasło musi zawierać małą i wielką literę oraz cyfrę'
-    ),
+  password: z.string().min(8, 'Hasło musi mieć minimum 8 znaków'),
 });
 
 const passwordResetSchema = z.object({
@@ -32,13 +26,7 @@ const passwordResetSchema = z.object({
 
 const updatePasswordSchema = z
   .object({
-    password: z
-      .string()
-      .min(8, 'Hasło musi mieć minimum 8 znaków')
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        'Hasło musi zawierać małą literę, wielką literę i cyfrę'
-      ),
+    password: z.string().min(8, 'Hasło musi mieć minimum 8 znaków'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -235,8 +223,7 @@ export function AuthForm({ type }: AuthFormProps) {
                 {(type === 'register' || type === 'update-password') &&
                   !('password' in errors && errors.password) && (
                     <p className="text-xs text-muted-foreground">
-                      Hasło musi mieć min. 8 znaków, małą i wielką literę oraz
-                      cyfrę
+                      Hasło musi mieć minimum 8 znaków
                     </p>
                   )}{' '}
               </div>

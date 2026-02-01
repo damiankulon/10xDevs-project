@@ -15,6 +15,7 @@ COPY turbo.json ./
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
 
+RUN pnpm run build --filter=@kipio/shared
 RUN pnpm run build --filter=@kipio/web
 
 # Run stage – web needs @kipio/shared (packages/shared) at runtime
@@ -26,11 +27,14 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4321
 
-# Copy workspace so @kipio/shared resolves from node_modules
-COPY --from=builder /app/package.json /app/pnpm-workspace.yaml ./
+# Copy workspace files
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/shared ./packages/shared
-COPY --from=builder /app/apps/web/package.json ./apps/web/
+COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
+
+# Copy built outputs
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
 
 WORKDIR /app/apps/web

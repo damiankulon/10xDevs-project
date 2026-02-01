@@ -146,33 +146,72 @@ Kipio solves the problem of data fragmentation across multiple rigid application
 
 ## Running with Docker
 
-Projekt można uruchomić w kontenerach Docker (API + Web).
+Projekt można uruchomić na dwa sposoby: używając `docker compose` (zalecane) lub manualnie budując i uruchamiając każdy obraz z osobna za pomocą `docker run`.
 
-1. **Skonfiguruj zmienne środowiskowe**
+### Uruchamianie za pomocą `docker compose`
 
-   ```bash
-   cp .env.example .env
-   ```
+1.  **Skonfiguruj zmienne środowiskowe**
 
-   Uzupełnij `.env` danymi Supabase i innymi ustawieniami (jak przy uruchomieniu lokalnym).
+    Utwórz plik `.env` w głównym katalogu projektu (możesz skopiować `.env.example`, jeśli istnieje) i uzupełnij go wymaganymi kluczami, np. do Supabase. `docker-compose.yml` automatycznie wczyta ten plik.
 
-2. **Zbuduj i uruchom**
+2.  **Zbuduj i uruchom**
 
-   ```bash
-   docker compose up --build
-   ```
+    ```bash
+    docker compose up --build
+    ```
 
-   - Frontend: http://localhost:4321
-   - API: http://localhost:3001/api
+    - Frontend: http://localhost:8080
+    - API: http://localhost:3000
 
-3. **Opcjonalnie – tylko jedna aplikacja**
+3.  **Opcjonalnie – tylko jedna aplikacja**
 
-   ```bash
-   docker compose up --build api    # tylko API
-   docker compose up --build web    # tylko Web
-   ```
+    ```bash
+    docker compose up --build api # tylko API
+    docker compose up --build web # tylko Web
+    ```
 
-   Kontekst budowania to katalog główny repozytorium; Dockerfile dla API i Web znajdują się w `apps/api/Dockerfile` i `apps/web/Dockerfile`.
+### Uruchamianie za pomocą `docker run` (manualne)
+
+Ta metoda wymaga manualnego zbudowania każdego obrazu i przekazania zmiennych środowiskowych.
+
+1.  **Zbuduj obrazy Docker**
+
+    ```bash
+    # Budowanie obrazu dla aplikacji API
+    docker build -t dkulon/kipio-api:latest -f apps/api/Dockerfile .
+
+    # Budowanie obrazu dla aplikacji Web
+    docker build -t dkulon/kipio-web:latest -f apps/web/Dockerfile .
+    ```
+
+2.  **Uruchom kontenery**
+
+    Zastąp `<TWOJE_ZMIENNE>` rzeczywistymi wartościami.
+
+    ```bash
+    # Uruchamianie kontenera API na porcie 3000
+    docker run -d -p 3000:3000 \
+      -e "PORT=3001" \
+      -e "NODE_ENV=production" \
+      -e "FRONTEND_URL=http://localhost:8080" \
+      -e "SUPABASE_URL=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_ANON_KEY=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_JWT_SECRET=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_SERVICE_ROLE_KEY=<TWOJE_ZMIENNE>" \
+      --name kipio-api \
+      dkulon/kipio-api:latest
+
+    # Uruchamianie kontenera Web na porcie 8080
+    docker run -d -p 8080:8080 \
+      -e "SUPABASE_URL=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_KEY=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_JWT_SECRET=<TWOJE_ZMIENNE>" \
+      -e "API_URL=http://localhost:3000" \
+      --name kipio-web \
+      dkulon/kipio-web:latest
+    ```
+
+Kontekst budowania to katalog główny repozytorium; Dockerfile dla API i Web znajdują się w `apps/api/Dockerfile` i `apps/web/Dockerfile`.
 
 ## Testing
 
