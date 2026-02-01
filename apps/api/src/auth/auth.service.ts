@@ -83,11 +83,15 @@ export class AuthService {
     try {
       const supabase = this.supabaseService.getAdminClient();
 
+      // Register user without email verification
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${this.configService.get('FRONTEND_URL')}/auth/callback`,
+          data: {
+            email_confirmed: true,
+          },
         },
       });
 
@@ -107,11 +111,14 @@ export class AuthService {
         throw new BadRequestException('Nie udało się utworzyć konta');
       }
 
+      // Profile is automatically created by database trigger (handle_new_user)
+      // No need to create it manually here
+
       this.logger.log(`User registered: ${data.user.id}`);
 
       return {
         message:
-          'Konto zostało utworzone. Sprawdź skrzynkę email w celu weryfikacji.',
+          'Konto zostało utworzone pomyślnie. Możesz się teraz zalogować.',
       };
     } catch (error) {
       if (

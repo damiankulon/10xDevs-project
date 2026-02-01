@@ -14,6 +14,7 @@ describe('TrackersService', () => {
   // Mock Supabase client
   const mockSupabaseClient = {
     from: jest.fn(),
+    rpc: jest.fn(),
   };
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
@@ -42,10 +43,10 @@ describe('TrackersService', () => {
     data: { trackers_limit: number } | null,
     error: any = null
   ) => {
-    const selectSingleProfile = jest.fn().mockResolvedValue({ data, error });
+    const maybeSingleProfile = jest.fn().mockResolvedValue({ data, error });
     const isDeletedAtNullProfile = jest
       .fn()
-      .mockReturnValue({ single: selectSingleProfile });
+      .mockReturnValue({ maybeSingle: maybeSingleProfile });
     const eqIdProfile = jest
       .fn()
       .mockReturnValue({ is: isDeletedAtNullProfile });
@@ -104,6 +105,9 @@ describe('TrackersService', () => {
       const profileMock = setupProfileMock({ trackers_limit: 10 });
       const countMock = setupTrackersCountMock(5);
       const insertMock = setupInsertMock(mockCreatedTracker);
+
+      // Mock RPC call for counting trackers
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 5, error: null });
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') return profileMock;
@@ -189,13 +193,16 @@ describe('TrackersService', () => {
       // Create a fresh mock for this specific test
       let trackersCallCount = 0;
 
+      // Mock RPC call returning count at limit
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 10, error: null });
+
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') {
           return {
             select: jest.fn().mockReturnValue({
               eq: jest.fn().mockReturnValue({
                 is: jest.fn().mockReturnValue({
-                  single: jest.fn().mockResolvedValue({
+                  maybeSingle: jest.fn().mockResolvedValue({
                     data: { trackers_limit: 10 },
                     error: null,
                   }),
@@ -272,6 +279,9 @@ describe('TrackersService', () => {
       const countMock = setupTrackersCountMock(5);
       const insertMock = setupInsertMock(trackerWithUnit);
 
+      // Mock RPC call for counting trackers
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 5, error: null });
+
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') return profileMock;
         if (table === 'trackers') return { ...countMock, ...insertMock };
@@ -299,6 +309,9 @@ describe('TrackersService', () => {
       const countMock = setupTrackersCountMock(5);
       const insertMock = setupInsertMock(trackerBoolean);
 
+      // Mock RPC call for counting trackers
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 5, error: null });
+
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') return profileMock;
         if (table === 'trackers') return { ...countMock, ...insertMock };
@@ -307,6 +320,263 @@ describe('TrackersService', () => {
 
       const result = await service.create(mockUserId, dtoWithoutOrder);
       expect(result.display_order).toBe(0);
+    });
+  });
+
+  describe('findAll', () => {
+    it('should return paginated list of trackers', async () => {
+      const mockTrackers = [
+        {
+          ...mockCreatedTracker,
+          id: '1',
+          name: 'Tracker 1',
+        },
+        {
+          ...mockCreatedTracker,
+          id: '2',
+          name: 'Tracker 2',
+        },
+      ];
+
+      // Create chainable mock methods
+      const createChainableMock = () => {
+        const chainable: any = {
+          eq: jest.fn().mockReturnThis(),
+          or: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          range: jest.fn().mockResolvedValue({
+            data: mockTrackers,
+            error: null,
+            count: 2,
+          }),
+        };
+        // Make each method return the chainable object
+        Object.keys(chainable).forEach((key) => {
+          if (typeof chainable[key] === 'function' && key !== 'range') {
+            chainable[key] = jest.fn(() => chainable);
+          }
+        });
+        return chainable;
+      };
+
+      const trackersMock = {
+        select: jest.fn().mockReturnValue({
+          is: jest.fn(() => createChainableMock()),
+        }),
+      };
+
+      const sharesMock = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({
+            data: [],
+            error: null,
+          }),
+        }),
+      };
+
+      const entriesMock = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            is: jest.fn().mockReturnValue({
+              order: jest.fn().mockReturnValue({
+                limit: jest.fn().mockReturnValue({
+                  maybeSingle: jest.fn().mockResolvedValue({
+                    data: null,
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'trackers') return trackersMock;
+        if (table === 'tracker_shares') return sharesMock;
+        if (table === 'entries') return entriesMock;
+        return {};
+      });
+
+      const result = await service.findAll(mockUserId, {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(result).toBeDefined();
+      expect(result.data).toHaveLength(2);
+      expect(result.pagination.total_items).toBe(2);
+      expect(result.pagination.page).toBe(1);
+    });
+  });
+
+  describe('findOne', () => {
+    it('should return tracker details with stats', async () => {
+      const trackerMock = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            is: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: mockCreatedTracker,
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const entriesMock = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            is: jest.fn().mockReturnValue({
+              order: jest.fn().mockResolvedValue({
+                data: [],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'trackers') return trackerMock;
+        if (table === 'entries') return entriesMock;
+        if (table === 'tracker_shares')
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: null,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        return {};
+      });
+
+      const result = await service.findOne(mockTrackerId, mockUserId);
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe(mockTrackerId);
+      expect(result.is_owner).toBe(true);
+      expect(result.stats).toBeDefined();
+    });
+  });
+
+  describe('update', () => {
+    it('should update tracker successfully', async () => {
+      const updateDto = { name: 'Updated Name' };
+      const updatedTracker = { ...mockCreatedTracker, name: 'Updated Name' };
+
+      const findMock = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            is: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: mockCreatedTracker,
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const updateMock = {
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: updatedTracker,
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'trackers') return { ...findMock, ...updateMock };
+        return {};
+      });
+
+      const result = await service.update(mockTrackerId, mockUserId, updateDto);
+
+      expect(result.name).toBe('Updated Name');
+    });
+  });
+
+  describe('remove', () => {
+    it('should soft delete tracker', async () => {
+      const findMock = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            is: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: mockCreatedTracker,
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const deleteMock = {
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({
+            error: null,
+          }),
+        }),
+      };
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'trackers') return { ...findMock, ...deleteMock };
+        return {};
+      });
+
+      await expect(
+        service.remove(mockTrackerId, mockUserId)
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('reorder', () => {
+    it('should reorder trackers successfully', async () => {
+      const reorderDto = {
+        order: [
+          { id: '1', display_order: 0 },
+          { id: '2', display_order: 1 },
+        ],
+      };
+
+      const trackersMock = {
+        select: jest.fn().mockReturnValue({
+          in: jest.fn().mockReturnValue({
+            is: jest.fn().mockResolvedValue({
+              data: [
+                { id: '1', user_id: mockUserId },
+                { id: '2', user_id: mockUserId },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({
+            error: null,
+          }),
+        }),
+      };
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'trackers') return trackersMock;
+        return {};
+      });
+
+      const result = await service.reorder(mockUserId, reorderDto);
+
+      expect(result.message).toBe('Tracker order updated successfully');
+      expect(result.updated_count).toBe(2);
     });
   });
 });

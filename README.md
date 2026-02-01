@@ -13,6 +13,7 @@ A Personal Data Warehouse application designed for Power Users, Bio-hackers, and
 - [Tech Stack](#tech-stack)
 - [Getting Started Locally](#getting-started-locally)
 - [Running with Docker](#running-with-docker)
+- [Testing](#testing)
 - [Available Scripts](#available-scripts)
 - [Project Scope](#project-scope)
 - [Project Status](#project-status)
@@ -60,6 +61,18 @@ Kipio solves the problem of data fragmentation across multiple rigid application
 | [Supabase](https://supabase.com/)                               | -       | PostgreSQL database & authentication |
 | [Passport.js](https://www.passportjs.org/)                      | -       | JWT validation                       |
 | [class-validator](https://github.com/typestack/class-validator) | -       | DTO validation                       |
+
+### Testing
+
+| Technology                                                      | Version | Purpose                              |
+| --------------------------------------------------------------- | ------- | ------------------------------------ |
+| [Jest](https://jestjs.io/)                                      | 30.x    | Unit & integration testing framework |
+| [@nestjs/testing](https://docs.nestjs.com/fundamentals/testing) | 11.x    | NestJS testing utilities             |
+| [ts-jest](https://kulshekhar.github.io/ts-jest/)                | 29.x    | TypeScript support for Jest          |
+| [Vitest](https://vitest.dev/)                                   | 4.x     | Frontend unit testing                |
+| [@testing-library/react](https://testing-library.com/react)     | 16.x    | React component testing              |
+| [Playwright](https://playwright.dev/)                           | 1.x     | E2E testing                          |
+| [k6](https://k6.io/)                                            | -       | Performance & load testing (planned) |
 
 ### Infrastructure
 
@@ -128,38 +141,127 @@ Kipio solves the problem of data fragmentation across multiple rigid application
    pnpm dev
    ```
 
-   - Frontend: http://localhost:4321
-   - API: http://localhost:3001
+   - Frontend: http://localhost:8080
+   - API: http://localhost:3000
 
 ## Running with Docker
 
-Projekt można uruchomić w kontenerach Docker (API + Web).
+Projekt można uruchomić na dwa sposoby: używając `docker compose` (zalecane) lub manualnie budując i uruchamiając każdy obraz z osobna za pomocą `docker run`.
 
-1. **Skonfiguruj zmienne środowiskowe**
+### Uruchamianie za pomocą `docker compose`
+
+1.  **Skonfiguruj zmienne środowiskowe**
+
+    Utwórz plik `.env` w głównym katalogu projektu (możesz skopiować `.env.example`, jeśli istnieje) i uzupełnij go wymaganymi kluczami, np. do Supabase. `docker-compose.yml` automatycznie wczyta ten plik.
+
+2.  **Zbuduj i uruchom**
+
+    ```bash
+    docker compose up --build
+    ```
+
+    - Frontend: http://localhost:8080
+    - API: http://localhost:3000
+
+3.  **Opcjonalnie – tylko jedna aplikacja**
+
+    ```bash
+    docker compose up --build api # tylko API
+    docker compose up --build web # tylko Web
+    ```
+
+### Uruchamianie za pomocą `docker run` (manualne)
+
+Ta metoda wymaga manualnego zbudowania każdego obrazu i przekazania zmiennych środowiskowych.
+
+1.  **Zbuduj obrazy Docker**
+
+    ```bash
+    # Budowanie obrazu dla aplikacji API
+    docker build -t dkulon/kipio-api:latest -f apps/api/Dockerfile .
+
+    # Budowanie obrazu dla aplikacji Web
+    docker build -t dkulon/kipio-web:latest -f apps/web/Dockerfile .
+    ```
+
+2.  **Uruchom kontenery**
+
+    Zastąp `<TWOJE_ZMIENNE>` rzeczywistymi wartościami.
+
+    ```bash
+    # Uruchamianie kontenera API na porcie 3000
+    docker run -d -p 3000:3000 \
+      -e "PORT=3000" \
+      -e "NODE_ENV=production" \
+      -e "FRONTEND_URL=http://localhost:8080" \
+      -e "SUPABASE_URL=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_ANON_KEY=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_JWT_SECRET=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_SERVICE_ROLE_KEY=<TWOJE_ZMIENNE>" \
+      --name kipio-api \
+      dkulon/kipio-api:latest
+
+    # Uruchamianie kontenera Web na porcie 8080
+    docker run -d -p 8080:8080 \
+      -e "SUPABASE_URL=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_KEY=<TWOJE_ZMIENNE>" \
+      -e "SUPABASE_JWT_SECRET=<TWOJE_ZMIENNE>" \
+      -e "API_URL=http://localhost:3000" \
+      --name kipio-web \
+      dkulon/kipio-web:latest
+    ```
+
+Kontekst budowania to katalog główny repozytorium; Dockerfile dla API i Web znajdują się w `apps/api/Dockerfile` i `apps/web/Dockerfile`.
+
+## Testing
+
+This project uses multiple testing frameworks to ensure code quality and reliability:
+
+- **Jest** - Unit and integration tests for NestJS backend
+- **Vitest** - Unit tests for React components and frontend logic
+- **Playwright** - End-to-end tests for full user workflows
+
+### Quick Start
+
+1. **Install dependencies**
 
    ```bash
-   cp .env.example .env
+   pnpm install
    ```
 
-   Uzupełnij `.env` danymi Supabase i innymi ustawieniami (jak przy uruchomieniu lokalnym).
-
-2. **Zbuduj i uruchom**
+2. **Install Playwright browsers**
 
    ```bash
-   docker compose up --build
+   pnpm exec playwright install chromium
    ```
 
-   - Frontend: http://localhost:4321
-   - API: http://localhost:3001/api
-
-3. **Opcjonalnie – tylko jedna aplikacja**
-
+3. **Run all tests**
    ```bash
-   docker compose up --build api    # tylko API
-   docker compose up --build web    # tylko Web
+   pnpm test
    ```
 
-   Kontekst budowania to katalog główny repozytorium; Dockerfile dla API i Web znajdują się w `apps/api/Dockerfile` i `apps/web/Dockerfile`.
+### Running Tests
+
+```bash
+# Backend unit tests (Jest)
+pnpm --filter @kipio/api test
+pnpm --filter @kipio/api test:watch
+pnpm --filter @kipio/api test:cov
+
+# Frontend unit tests (Vitest)
+pnpm --filter @kipio/web test
+pnpm --filter @kipio/web test:watch
+pnpm --filter @kipio/web test:ui
+
+# E2E tests (Playwright)
+pnpm test:e2e
+pnpm test:e2e:ui
+pnpm test:e2e:debug
+```
+
+### Documentation
+
+For detailed testing guidelines, configuration, and best practices, see [TESTING.md](TESTING.md).
 
 ## Available Scripts
 
@@ -174,20 +276,27 @@ Projekt można uruchomić w kontenerach Docker (API + Web).
 | `pnpm format`       | Format code with Prettier                  |
 | `pnpm format:check` | Check code formatting                      |
 | `pnpm test`         | Run tests across all packages              |
+| `pnpm test:e2e`     | Run Playwright E2E tests                   |
+| `pnpm test:e2e:ui`  | Run E2E tests in UI mode                   |
 | `pnpm clean`        | Clean all build outputs and node_modules   |
 | `pnpm dev:web`      | Start only the web application             |
 | `pnpm dev:api`      | Start only the API application             |
 | `pnpm build:web`    | Build only the web application             |
 | `pnpm build:api`    | Build only the API application             |
 
-### Web Application (`apps/web`)
+### Web Applicati | Description |
 
-| Script         | Description              |
-| -------------- | ------------------------ |
-| `pnpm dev`     | Start Astro dev server   |
-| `pnpm build`   | Build for production     |
+| ------------------- | ------------------------------ |
+| `pnpm dev` | Start Astro dev server |
+| `pnpm build` | Build for production |
 | `pnpm preview` | Preview production build |
-| `pnpm lint`    | Run ESLint               |
+| `pnpm lint` | Run ESLint |
+| `pnpm test` | Run Vitest unit tests |
+| `pnpm test:watch` | Run tests in watch mode |
+| `pnpm test:ui` | Run tests in UI mode |
+| `pnpm test:coverage`| Run tests with coverage report |
+| `pnpm preview` | Preview production build |
+| `pnpm lint` | Run ESLint |
 
 ### API Application (`apps/api`)
 
@@ -196,9 +305,12 @@ Projekt można uruchomić w kontenerach Docker (API + Web).
 | `pnpm dev`         | Start NestJS in watch mode |
 | `pnpm build`       | Build for production       |
 | `pnpm start`       | Start production server    |
-| `pnpm start:debug` | Start with debugging       |
+| `pnpm start:debug` | Starbackend E2E tests      |
+| `pnpm test:debug`  | Run tests in debug mode    |
 | `pnpm test`        | Run Jest tests             |
 | `pnpm test:cov`    | Run tests with coverage    |
+| `pnpm test:watch`  | Run tests in watch mode    |
+| `pnpm test:e2e`    | Run E2E tests (planned)    |
 
 ## Project Scope
 

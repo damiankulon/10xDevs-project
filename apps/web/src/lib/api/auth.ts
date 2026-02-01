@@ -1,5 +1,5 @@
 // Direct URL to NestJS backend (CORS is configured in NestJS)
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:3000';
 
 interface ApiError {
   message: string;
@@ -59,7 +59,7 @@ class AuthApiClient {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify({ email, password }),
@@ -79,7 +79,7 @@ class AuthApiClient {
   }
 
   async register(email: string, password: string): Promise<RegisterResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify({ email, password }),
@@ -89,7 +89,7 @@ class AuthApiClient {
   }
 
   async logout(): Promise<LogoutResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
       method: 'POST',
       headers: this.getAuthHeaders(true),
       credentials: 'include', // Include cookies
@@ -106,7 +106,7 @@ class AuthApiClient {
   }
 
   async resetPassword(email: string): Promise<PasswordResetResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/password-reset`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/password-reset`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify({ email }),
@@ -116,7 +116,7 @@ class AuthApiClient {
   }
 
   async updatePassword(password: string): Promise<UpdatePasswordResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/update-password`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/update-password`, {
       method: 'POST',
       headers: this.getAuthHeaders(true),
       body: JSON.stringify({ password }),

@@ -47,6 +47,8 @@ export function TrackerGrid({
   trackers,
   isEditMode,
   onReorder,
+  onAddEntry,
+  onViewDetails,
 }: TrackerGridProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -113,7 +115,12 @@ export function TrackerGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {sortedTrackers.map((tracker) => (
-        <TrackerCard key={tracker.tracker_id} tracker={tracker} />
+        <TrackerCard
+          key={tracker.tracker_id}
+          tracker={tracker}
+          onAddEntry={onAddEntry}
+          onViewDetails={onViewDetails}
+        />
       ))}
     </div>
   );

@@ -1,0 +1,33 @@
+---
+import AppLayout from '@/layouts/AppLayout.astro';
+
+export const prerender = false;
+
+const { trackerId } = Astro.params;
+
+// Validate trackerId format (UUID)
+const uuidRegex =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+if (!trackerId || !uuidRegex.test(trackerId)) {
+  return Astro.redirect('/app');
+}
+---
+
+<AppLayout title="Szczegóły trackera">
+  <div id="tracker-detail-root" data-tracker-id={trackerId}></div>
+</AppLayout>
+
+<script>
+  import { createElement } from 'react';
+  import { createRoot } from 'react-dom/client';
+  import { TrackerDetailPage } from '@/components/trackers/TrackerDetailPage';
+
+  const container = document.getElementById('tracker-detail-root');
+  if (container) {
+    const trackerId = container.dataset.trackerId;
+    if (trackerId) {
+      const root = createRoot(container);
+      root.render(createElement(TrackerDetailPage, { trackerId }));
+    }
+  }
+</script>

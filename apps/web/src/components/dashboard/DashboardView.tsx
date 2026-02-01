@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useDashboard } from '@/components/hooks/useDashboard';
 import { DashboardHeader } from './DashboardHeader';
 import { TrackerGrid } from './TrackerGrid';
@@ -7,9 +7,28 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import { CreateTrackerModal } from '@/components/trackers';
+import type { DashboardTrackerDto } from '@shared/types';
 
 export default function DashboardView() {
   const { state, actions } = useDashboard();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [userName, setUserName] = useState('Użytkownik');
+
+  // Pobierz display_name z localStorage
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user?.display_name) {
+          setUserName(user.display_name);
+        }
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+  }, []);
 
   // Filtrowanie trackerów na podstawie wybranego filtra
   const filteredTrackers = useMemo(() => {
@@ -17,9 +36,13 @@ export default function DashboardView() {
 
     switch (state.filter) {
       case 'own':
-        return state.data.trackers.filter((t) => !t.is_shared);
+        return state.data.trackers.filter(
+          (t: DashboardTrackerDto) => !t.is_shared
+        );
       case 'shared':
-        return state.data.trackers.filter((t) => t.is_shared);
+        return state.data.trackers.filter(
+          (t: DashboardTrackerDto) => t.is_shared
+        );
       case 'all':
       default:
         return state.data.trackers;
@@ -75,9 +98,16 @@ export default function DashboardView() {
   // Brak danych
   if (!state.data) {
     return (
-      <EmptyState
-        onCreateTracker={() => (window.location.href = '/app/trackers/new')}
-      />
+      <>
+        <EmptyState onCreateTracker={() => setIsCreateModalOpen(true)} />
+        <CreateTrackerModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={(_tracker) => {
+            actions.refetch();
+          }}
+        />
+      </>
     );
   }
 
@@ -88,6 +118,7 @@ export default function DashboardView() {
       return (
         <div>
           <DashboardHeader
+            userName={userName}
             summary={state.data.summary}
             filter={state.filter}
             isEditMode={state.isEditMode}
@@ -95,7 +126,7 @@ export default function DashboardView() {
             onEditModeToggle={actions.toggleEditMode}
             onRefresh={actions.refetch}
           />
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center justify-center min-h-100">
             <div className="text-center text-muted-foreground">
               <p className="text-lg">Brak trackerów w tej kategorii</p>
               <p className="text-sm mt-2">Spróbuj zmienić filtr</p>
@@ -107,29 +138,57 @@ export default function DashboardView() {
 
     // Jeśli w ogóle nie ma trackerów
     return (
-      <EmptyState
-        onCreateTracker={() => (window.location.href = '/app/trackers/new')}
-      />
+      <>
+        <EmptyState onCreateTracker={() => setIsCreateModalOpen(true)} />
+        <CreateTrackerModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={(_tracker) => {
+            actions.refetch();
+          }}
+        />
+      </>
     );
   }
 
   // Normalny widok z danymi
   return (
-    <div>
+    <>
       <DashboardHeader
+        userName={userName}
         summary={state.data.summary}
         filter={state.filter}
         isEditMode={state.isEditMode}
         onFilterChange={actions.setFilter}
         onEditModeToggle={actions.toggleEditMode}
         onRefresh={actions.refetch}
+        onCreateTracker={() => setIsCreateModalOpen(true)}
       />
 
       <TrackerGrid
         trackers={filteredTrackers}
         isEditMode={state.isEditMode}
         onReorder={actions.handleReorder}
+        onAddEntry={(trackerId) => {
+          // TODO: Otworzyć BottomSheet do dodawania wpisu
+          // Na razie przekieruj do strony trackera
+          window.location.href = `/app/trackers/${trackerId}`;
+        }}
+        onViewDetails={(trackerId) => {
+          // Nawiguj do widoku szczegółów trackera
+          window.location.href = `/app/trackers/${trackerId}`;
+        }}
       />
-    </div>
+
+      <CreateTrackerModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={(_tracker) => {
+          actions.refetch();
+        }}
+        trackerLimit={state.data.summary.tracker_limit}
+        currentTrackerCount={state.data.summary.total_trackers}
+      />
+    </>
   );
 }

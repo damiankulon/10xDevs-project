@@ -6,9 +6,13 @@ import { supabaseClient } from '../db/supabase.client';
 const PUBLIC_PATHS = [
   '/',
   '/login',
+  '/auth/login',
   '/register',
+  '/auth/register',
   '/password-reset',
+  '/auth/password-reset',
   '/update-password',
+  '/auth/update-password',
 ];
 
 // API paths are public (handled by NestJS)
