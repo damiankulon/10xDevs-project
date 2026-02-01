@@ -126,8 +126,48 @@ export class TrackersService {
       throw new InternalServerErrorException('Failed to fetch user profile');
     }
 
-    // Use default limit if profile not found (shouldn't happen due to trigger)
-    const limit = profile?.trackers_limit ?? 50;
+    // If profile doesn't exist, create it (fallback for cases where trigger didn't fire)
+    let limit: number;
+    if (!profile) {
+      this.logger.warn(
+        `Profile not found for user ${userId}. Creating profile automatically.`
+      );
+
+      // Get user's email from auth.users to create profile
+      const { data: authUser, error: authError } =
+        await supabase.auth.admin.getUserById(userId);
+
+      if (authError || !authUser.user) {
+        this.logger.error(`User ${userId} not found in auth.users`, authError);
+        throw new InternalServerErrorException('User not found');
+      }
+
+      // Create profile with default values
+      const { data: newProfile, error: createProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          display_name:
+            authUser.user.user_metadata?.full_name ||
+            authUser.user.email ||
+            'User',
+        } as never)
+        .select('trackers_limit')
+        .single<ProfileWithLimit>();
+
+      if (createProfileError || !newProfile) {
+        this.logger.error(
+          `Failed to create profile for user ${userId}`,
+          createProfileError
+        );
+        throw new InternalServerErrorException('Failed to create user profile');
+      }
+
+      limit = newProfile.trackers_limit;
+      this.logger.log(`Profile created for user ${userId}`);
+    } else {
+      limit = profile.trackers_limit;
+    }
 
     // Count existing trackers for the user
     // Using RPC call to bypass RLS policy recursion issues

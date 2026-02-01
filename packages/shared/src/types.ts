@@ -780,6 +780,7 @@ export interface DashboardSummaryDto {
   active_trackers: number;
   entries_today: number;
   entries_this_week: number;
+  tracker_limit: number;
 }
 
 /** Trend direction for dashboard tracker */
@@ -791,21 +792,33 @@ export interface DashboardTrendDto {
   percentage: number;
 }
 
+/** Sparkline data point */
+export interface SparklineDataPoint {
+  date: string;
+  value: number;
+}
+
 /**
  * Dashboard tracker item DTO
  * Simplified tracker data for dashboard view
  */
 export interface DashboardTrackerDto {
-  id: string;
+  tracker_id: string;
   name: string;
   data_type: DataType;
   unit: string | null;
   color: string | null;
   icon: string | null;
   is_active: boolean;
+  is_shared: boolean;
+  display_order: number;
   last_entry: LastEntryDto | null;
-  sparkline_data: number[];
-  trend: DashboardTrendDto;
+  sparkline: SparklineDataPoint[];
+  trend: DashboardTrendDto | null;
+  stats?: {
+    total_entries: number;
+    streak: number;
+  };
 }
 
 /**

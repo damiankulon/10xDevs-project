@@ -14,7 +14,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ onCreateTracker }: EmptyStateProps) {
   return (
-    <div className="flex items-center justify-center min-h-[500px]">
+    <div className="flex items-center justify-center min-h-125">
       <Card className="max-w-md w-full text-center">
         <CardHeader>
           <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">

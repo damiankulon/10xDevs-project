@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useDashboard } from '@/components/hooks/useDashboard';
 import { DashboardHeader } from './DashboardHeader';
 import { TrackerGrid } from './TrackerGrid';
@@ -13,6 +13,22 @@ import type { DashboardTrackerDto } from '@shared/types';
 export default function DashboardView() {
   const { state, actions } = useDashboard();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [userName, setUserName] = useState('Użytkownik');
+
+  // Pobierz display_name z localStorage
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user?.display_name) {
+          setUserName(user.display_name);
+        }
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+  }, []);
 
   // Filtrowanie trackerów na podstawie wybranego filtra
   const filteredTrackers = useMemo(() => {
@@ -102,6 +118,7 @@ export default function DashboardView() {
       return (
         <div>
           <DashboardHeader
+            userName={userName}
             summary={state.data.summary}
             filter={state.filter}
             isEditMode={state.isEditMode}
@@ -138,6 +155,7 @@ export default function DashboardView() {
   return (
     <>
       <DashboardHeader
+        userName={userName}
         summary={state.data.summary}
         filter={state.filter}
         isEditMode={state.isEditMode}
@@ -151,6 +169,14 @@ export default function DashboardView() {
         trackers={filteredTrackers}
         isEditMode={state.isEditMode}
         onReorder={actions.handleReorder}
+        onAddEntry={(trackerId) => {
+          // TODO: Otworzyć BottomSheet do dodawania wpisu
+          // Na razie przekieruj do strony trackera
+          window.location.href = `/app/trackers/${trackerId}`;
+        }}
+        onViewDetails={(trackerId) => {
+          window.location.href = `/app/trackers/${trackerId}`;
+        }}
       />
 
       <CreateTrackerModal

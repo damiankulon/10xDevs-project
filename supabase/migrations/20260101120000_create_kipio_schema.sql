@@ -231,6 +231,29 @@ create index idx_tracker_templates_package_id on public.tracker_templates(packag
 -- =====================================================================================================================
 
 -- ---------------------------------------------------------------------------------------------------------------------
+-- function: count_user_trackers
+-- description: counts active trackers for a user, bypassing RLS policies to avoid infinite recursion
+-- note: uses SECURITY DEFINER to bypass RLS when called from triggers
+-- ---------------------------------------------------------------------------------------------------------------------
+create or replace function public.count_user_trackers(p_user_id uuid)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return (
+    select count(*)::bigint
+    from public.trackers
+    where user_id = p_user_id
+      and deleted_at is null
+  );
+end;
+$$;
+
+comment on function public.count_user_trackers is 'counts active trackers for a user, bypassing RLS policies to avoid recursion';
+
+-- ---------------------------------------------------------------------------------------------------------------------
 -- function: handle_new_user
 -- description: automatically creates a profile when a new user signs up via auth.users
 -- trigger: on_auth_user_created (after insert on auth.users)
@@ -285,21 +308,20 @@ create trigger update_entries_updated_at
 -- description: enforces per-user tracker limit defined in profiles.trackers_limit
 -- trigger: check_trackers_limit_trigger (before insert on trackers)
 -- note: prevents users from exceeding their tracker quota
+-- note: uses count_user_trackers() which has SECURITY DEFINER to avoid RLS recursion
 -- ---------------------------------------------------------------------------------------------------------------------
 create or replace function public.check_trackers_limit()
 returns trigger as $$
 declare
-    current_count integer;
+    current_count bigint;
     user_limit integer;
 begin
-    -- get user's tracker limit
+    -- get user's tracker limit (profiles has simple RLS, no recursion risk)
     select trackers_limit into user_limit
     from public.profiles where id = new.user_id;
 
-    -- count existing active trackers
-    select count(*) into current_count
-    from public.trackers
-    where user_id = new.user_id and deleted_at is null;
+    -- count existing active trackers using security definer function to bypass RLS
+    current_count := public.count_user_trackers(new.user_id);
 
     -- enforce limit
     if current_count >= user_limit then
@@ -321,9 +343,14 @@ create trigger check_trackers_limit_trigger
 -- description: enforces maximum of 5 active api tokens per user
 -- trigger: check_api_tokens_limit_trigger (before insert on api_tokens)
 -- note: hard limit for security and resource management
+-- note: uses SECURITY DEFINER to count api_tokens without RLS interference
 -- ---------------------------------------------------------------------------------------------------------------------
 create or replace function public.check_api_tokens_limit()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 declare
     current_count integer;
     max_tokens integer := 5;
@@ -340,7 +367,7 @@ begin
 
     return new;
 end;
-$$ language plpgsql;
+$$;
 
 comment on function public.check_api_tokens_limit is 'enforces max 5 active api tokens per user';
 
@@ -357,9 +384,14 @@ create trigger check_api_tokens_limit_trigger
 --   - scale: requires value_number within min/max range from config
 --   - boolean: requires value_boolean
 --   - text: requires value_text
+-- note: uses SECURITY DEFINER to read tracker config without RLS interference
 -- ---------------------------------------------------------------------------------------------------------------------
 create or replace function public.validate_entry_value()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 declare
     tracker_type text;
     tracker_config jsonb;
@@ -416,7 +448,7 @@ begin
 
     return new;
 end;
-$$ language plpgsql;
+$$;
 
 comment on function public.validate_entry_value is 'validates entry values match tracker type and config constraints';
 
