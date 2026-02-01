@@ -111,24 +111,8 @@ export class AuthService {
         throw new BadRequestException('Nie udało się utworzyć konta');
       }
 
-      // Create user profile automatically
-      // Note: Using type assertion due to Supabase SDK v2.89+ type inference issues
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        display_name: email.split('@')[0], // Use email prefix as initial display name
-        onboarding_completed: false,
-      } as never);
-
-      if (profileError) {
-        this.logger.error(
-          `Failed to create profile for user ${data.user.id}: ${profileError.message}`
-        );
-        // Try to clean up the auth user if profile creation failed
-        await supabase.auth.admin.deleteUser(data.user.id);
-        throw new BadRequestException(
-          'Nie udało się utworzyć profilu użytkownika'
-        );
-      }
+      // Profile is automatically created by database trigger (handle_new_user)
+      // No need to create it manually here
 
       this.logger.log(`User registered: ${data.user.id}`);
 
