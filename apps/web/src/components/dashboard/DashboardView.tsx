@@ -175,6 +175,7 @@ export default function DashboardView() {
           window.location.href = `/app/trackers/${trackerId}`;
         }}
         onViewDetails={(trackerId) => {
+          // Nawiguj do widoku szczegółów trackera
           window.location.href = `/app/trackers/${trackerId}`;
         }}
       />

@@ -31,16 +31,27 @@ interface DashboardTrendDto {
 }
 
 interface DashboardTrackerDto {
-  id: string;
+  tracker_id: string;
   name: string;
   data_type: string;
   unit: string | null;
   color: string | null;
   icon: string | null;
   is_active: boolean;
+  is_shared: boolean;
+  display_order: number;
   last_entry: LastEntryDto | null;
-  sparkline_data: number[];
-  trend: DashboardTrendDto;
+  sparkline: SparklineDataPoint[];
+  trend: DashboardTrendDto | null;
+  stats?: {
+    total_entries: number;
+    streak: number;
+  };
+}
+
+interface SparklineDataPoint {
+  date: string;
+  value: number;
 }
 
 interface LastEntryDto {
@@ -101,17 +112,31 @@ export class DashboardService {
 
           const trend = this.calculateTrend(sparklineData);
 
+          // Get total entries count for stats
+          const { count } = await this.supabaseService
+            .getAdminClient()
+            .from('entries')
+            .select('*', { count: 'exact', head: true })
+            .eq('tracker_id', tracker.id)
+            .is('deleted_at', null);
+
           return {
-            id: tracker.id,
+            tracker_id: tracker.id,
             name: tracker.name,
             data_type: tracker.data_type,
             unit: tracker.unit,
             color: tracker.color,
             icon: tracker.icon,
             is_active: tracker.is_active,
+            is_shared: tracker.user_id !== userId,
+            display_order: tracker.display_order,
             last_entry: lastEntries.get(tracker.id) || null,
-            sparkline_data: sparklineData,
+            sparkline: sparklineData,
             trend,
+            stats: {
+              total_entries: count || 0,
+              streak: 0, // TODO: Calculate streak
+            },
           };
         })
       );
@@ -140,7 +165,7 @@ export class DashboardService {
     const { data, error } = await supabase
       .from('trackers')
       .select(
-        'id, name, data_type, unit, color, icon, display_order, is_active'
+        'id, user_id, name, data_type, unit, color, icon, display_order, is_active'
       )
       .eq('user_id', userId)
       .is('deleted_at', null)
@@ -231,7 +256,7 @@ export class DashboardService {
     trackerId: string,
     dataType: string,
     days: number
-  ): Promise<number[]> {
+  ): Promise<SparklineDataPoint[]> {
     const supabase = this.supabaseService.getAdminClient();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -281,10 +306,14 @@ export class DashboardService {
       dailyData.get(date)!.push(value);
     });
 
-    // Calculate average for each day and return as array
-    return Array.from(dailyData.values()).map((values) => {
+    // Calculate average for each day and return as array of SparklineDataPoint
+    return Array.from(dailyData.entries()).map(([date, values]) => {
       const sum = values.reduce((a, b) => a + b, 0);
-      return values.length > 0 ? sum / values.length : 0;
+      const avgValue = values.length > 0 ? sum / values.length : 0;
+      return {
+        date,
+        value: avgValue,
+      };
     });
   }
 
@@ -295,7 +324,9 @@ export class DashboardService {
    * @param sparklineData - Array of numeric values
    * @returns Trend direction and percentage change
    */
-  private calculateTrend(sparklineData: number[]): DashboardTrendDto {
+  private calculateTrend(
+    sparklineData: SparklineDataPoint[]
+  ): DashboardTrendDto {
     if (sparklineData.length < 2) {
       return { direction: 'stable', percentage: 0 };
     }
@@ -312,8 +343,10 @@ export class DashboardService {
       return { direction: 'stable', percentage: 0 };
     }
 
-    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+    const firstAvg =
+      firstHalf.reduce((a, b) => a + b.value, 0) / firstHalf.length;
+    const secondAvg =
+      secondHalf.reduce((a, b) => a + b.value, 0) / secondHalf.length;
 
     // If both values are 0, no trend
     if (firstAvg === 0 && secondAvg === 0) {

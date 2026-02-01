@@ -19,11 +19,22 @@ export function TrackerCard({
   };
 
   const handleViewDetails = () => {
+    if (!tracker.tracker_id) {
+      console.error('TrackerCard: tracker_id is undefined', tracker);
+      return;
+    }
+
     if (onViewDetails && !isDraggable) {
       onViewDetails(tracker.tracker_id);
-    } else {
+    } else if (!isDraggable) {
       // Fallback do nawigacji przez href
       window.location.href = `/app/trackers/${tracker.tracker_id}`;
+    }
+  };
+
+  const handleCardClick = () => {
+    if (!isDraggable && tracker.tracker_id) {
+      handleViewDetails();
     }
   };
 
@@ -37,11 +48,12 @@ export function TrackerCard({
 
   return (
     <Card
-      className={`hover:shadow-lg transition-shadow ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      className={`hover:shadow-lg transition-shadow ${isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
       style={{
         borderLeftWidth: '4px',
         borderLeftColor: tracker.color || 'hsl(var(--primary))',
       }}
+      onClick={handleCardClick}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
