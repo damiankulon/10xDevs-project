@@ -2,15 +2,36 @@
 
 ## 1. Przegląd struktury UI
 
-Kipio wykorzystuje architekturę hybrydową łączącą statyczne strony marketingowe (Astro) z interaktywną częścią aplikacyjną (React SPA). Struktura UI jest zoptymalizowana pod kątem mobile-first PWA z naciskiem na szybkie wprowadzanie danych (Time-to-Value < 60 sekund).
+Kipio to Progressive Web App (PWA) działająca w modelu "online-first", zaprojektowana z myślą o szybkości i mobilności. Architektura UI składa się z trzech głównych warstw:
+
+### 1.1. Warstwa Uwierzytelniania
+
+- Ekran Powitalny (Landing Page)
+- Ekran Logowania/Rejestracji
+- Resetowanie Hasła
+
+### 1.2. Warstwa Onboardingu
+
+- Kreator Startowy z wyborem pakietów szablonów
+
+### 1.3. Warstwa Aplikacji (Chroniona)
+
+- Dashboard główny
+- Widok szczegółowy trackera
+- Tworzenie/edycja trackerów
+- Ustawienia użytkownika
+- Zarządzanie kluczami API
+- Eksport danych
+
+Aplikacja wykorzystuje podejście Mobile-First z naciskiem na szybkość wprowadzania danych (<5 sekund) poprzez komponenty Bottom Sheet oraz uproszczone formularze.
 
 ### Główne założenia architektoniczne
 
 - **Sekcja publiczna**: Statyczne strony Astro (landing, auth) z SSG dla optymalnej wydajności
 - **Sekcja aplikacyjna**: React SPA z `client:only="react"` i React Router dla płynnej nawigacji
 - **Nawigacja między sekcjami**: View Transitions API dla płynnych przejść
-- **Motyw**: Dark Mode jako jedyny dla MVP
-- **Tryb pracy**: Online-first z graceful degradation (read-only cache przy braku połączenia)
+- **Motyw**: Dark Mode jako domyślny (z możliwością wyboru Light/System w ustawieniach)
+- **Tryb pracy**: Online-first z graceful degradation (informacja o braku połączenia)
 
 ### Podział odpowiedzialności
 
