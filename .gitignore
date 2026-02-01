@@ -36,3 +36,5 @@ coverage
 # Misc
 *.swp
 *.swo
+
+spec/*
