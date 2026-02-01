@@ -13,6 +13,7 @@ A Personal Data Warehouse application designed for Power Users, Bio-hackers, and
 - [Tech Stack](#tech-stack)
 - [Getting Started Locally](#getting-started-locally)
 - [Running with Docker](#running-with-docker)
+- [Testing](#testing)
 - [Available Scripts](#available-scripts)
 - [Project Scope](#project-scope)
 - [Project Status](#project-status)
@@ -60,6 +61,18 @@ Kipio solves the problem of data fragmentation across multiple rigid application
 | [Supabase](https://supabase.com/)                               | -       | PostgreSQL database & authentication |
 | [Passport.js](https://www.passportjs.org/)                      | -       | JWT validation                       |
 | [class-validator](https://github.com/typestack/class-validator) | -       | DTO validation                       |
+
+### Testing
+
+| Technology                                                      | Version | Purpose                              |
+| --------------------------------------------------------------- | ------- | ------------------------------------ |
+| [Jest](https://jestjs.io/)                                      | 30.x    | Unit & integration testing framework |
+| [@nestjs/testing](https://docs.nestjs.com/fundamentals/testing) | 11.x    | NestJS testing utilities             |
+| [ts-jest](https://kulshekhar.github.io/ts-jest/)                | 29.x    | TypeScript support for Jest          |
+| [Vitest](https://vitest.dev/)                                   | 4.x     | Frontend unit testing                |
+| [@testing-library/react](https://testing-library.com/react)     | 16.x    | React component testing              |
+| [Playwright](https://playwright.dev/)                           | 1.x     | E2E testing                          |
+| [k6](https://k6.io/)                                            | -       | Performance & load testing (planned) |
 
 ### Infrastructure
 
@@ -161,6 +174,65 @@ Projekt można uruchomić w kontenerach Docker (API + Web).
 
    Kontekst budowania to katalog główny repozytorium; Dockerfile dla API i Web znajdują się w `apps/api/Dockerfile` i `apps/web/Dockerfile`.
 
+## Testing
+
+This project uses multiple testing frameworks to ensure code quality and reliability:
+
+- **Jest** - Unit and integration tests for NestJS backend
+- **Vitest** - Unit tests for React components and frontend logic
+- **Playwright** - End-to-end tests for full user workflows
+
+### Quick Start
+
+1. **Install dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+2. **Install Playwright browsers**
+
+   ```bash
+   pnpm exec playwright install chromium
+   ```
+
+3. **Run all tests**
+   ```bash
+   pnpm test
+   ```
+
+### Running Tests
+
+```bash
+# Backend unit tests (Jest)
+pnpm --filter @kipio/api test
+pnpm --filter @kipio/api test:watch
+pnpm --filter @kipio/api test:cov
+
+# Frontend unit tests (Vitest)
+pnpm --filter @kipio/web test
+pnpm --filter @kipio/web test:watch
+pnpm --filter @kipio/web test:ui
+
+# E2E tests (Playwright)
+pnpm test:e2e
+pnpm test:e2e:ui
+pnpm test:e2e:debug
+```
+
+### Coverage Requirements
+
+Both Jest and Vitest are configured with **80% coverage thresholds**:
+
+- Branches: 80%
+- Functions: 80%
+- Lines: 80%
+- Statements: 80%
+
+### Documentation
+
+For detailed testing guidelines, configuration, and best practices, see [TESTING.md](TESTING.md).
+
 ## Available Scripts
 
 ### Root (Monorepo)
@@ -174,20 +246,27 @@ Projekt można uruchomić w kontenerach Docker (API + Web).
 | `pnpm format`       | Format code with Prettier                  |
 | `pnpm format:check` | Check code formatting                      |
 | `pnpm test`         | Run tests across all packages              |
+| `pnpm test:e2e`     | Run Playwright E2E tests                   |
+| `pnpm test:e2e:ui`  | Run E2E tests in UI mode                   |
 | `pnpm clean`        | Clean all build outputs and node_modules   |
 | `pnpm dev:web`      | Start only the web application             |
 | `pnpm dev:api`      | Start only the API application             |
 | `pnpm build:web`    | Build only the web application             |
 | `pnpm build:api`    | Build only the API application             |
 
-### Web Application (`apps/web`)
+### Web Applicati | Description |
 
-| Script         | Description              |
-| -------------- | ------------------------ |
-| `pnpm dev`     | Start Astro dev server   |
-| `pnpm build`   | Build for production     |
+| ------------------- | ------------------------------ |
+| `pnpm dev` | Start Astro dev server |
+| `pnpm build` | Build for production |
 | `pnpm preview` | Preview production build |
-| `pnpm lint`    | Run ESLint               |
+| `pnpm lint` | Run ESLint |
+| `pnpm test` | Run Vitest unit tests |
+| `pnpm test:watch` | Run tests in watch mode |
+| `pnpm test:ui` | Run tests in UI mode |
+| `pnpm test:coverage`| Run tests with coverage report |
+| `pnpm preview` | Preview production build |
+| `pnpm lint` | Run ESLint |
 
 ### API Application (`apps/api`)
 
@@ -196,9 +275,12 @@ Projekt można uruchomić w kontenerach Docker (API + Web).
 | `pnpm dev`         | Start NestJS in watch mode |
 | `pnpm build`       | Build for production       |
 | `pnpm start`       | Start production server    |
-| `pnpm start:debug` | Start with debugging       |
+| `pnpm start:debug` | Starbackend E2E tests      |
+| `pnpm test:debug`  | Run tests in debug mode    |
 | `pnpm test`        | Run Jest tests             |
 | `pnpm test:cov`    | Run tests with coverage    |
+| `pnpm test:watch`  | Run tests in watch mode    |
+| `pnpm test:e2e`    | Run E2E tests (planned)    |
 
 ## Project Scope
 

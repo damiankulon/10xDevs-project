@@ -64,7 +64,14 @@ describe('DashboardService', () => {
   describe('calculateTrend', () => {
     it('should return stable trend for constant values', () => {
       const service = new DashboardService(supabaseService);
-      const sparklineData = [5, 5, 5, 5, 5, 5];
+      const sparklineData = [
+        { date: '2026-01-26', value: 5 },
+        { date: '2026-01-27', value: 5 },
+        { date: '2026-01-28', value: 5 },
+        { date: '2026-01-29', value: 5 },
+        { date: '2026-01-30', value: 5 },
+        { date: '2026-01-31', value: 5 },
+      ];
 
       const result = (service as any).calculateTrend(sparklineData);
 
@@ -74,7 +81,14 @@ describe('DashboardService', () => {
 
     it('should return up trend for increasing values', () => {
       const service = new DashboardService(supabaseService);
-      const sparklineData = [1, 2, 3, 7, 8, 9];
+      const sparklineData = [
+        { date: '2026-01-26', value: 1 },
+        { date: '2026-01-27', value: 2 },
+        { date: '2026-01-28', value: 3 },
+        { date: '2026-01-29', value: 7 },
+        { date: '2026-01-30', value: 8 },
+        { date: '2026-01-31', value: 9 },
+      ];
 
       const result = (service as any).calculateTrend(sparklineData);
 
@@ -84,7 +98,14 @@ describe('DashboardService', () => {
 
     it('should return down trend for decreasing values', () => {
       const service = new DashboardService(supabaseService);
-      const sparklineData = [9, 8, 7, 3, 2, 1];
+      const sparklineData = [
+        { date: '2026-01-26', value: 9 },
+        { date: '2026-01-27', value: 8 },
+        { date: '2026-01-28', value: 7 },
+        { date: '2026-01-29', value: 3 },
+        { date: '2026-01-30', value: 2 },
+        { date: '2026-01-31', value: 1 },
+      ];
 
       const result = (service as any).calculateTrend(sparklineData);
 
@@ -94,7 +115,7 @@ describe('DashboardService', () => {
 
     it('should return stable trend for insufficient data', () => {
       const service = new DashboardService(supabaseService);
-      const sparklineData = [5];
+      const sparklineData = [{ date: '2026-01-26', value: 5 }];
 
       const result = (service as any).calculateTrend(sparklineData);
 

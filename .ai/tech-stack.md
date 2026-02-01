@@ -49,6 +49,73 @@
 - Logika biznesowa (eksport CSV/JSON, walidacja danych)
 - Przyszłościowo: korelacje, integracje zewnętrzne
 
+## Testing
+
+### Testy Jednostkowe (Unit Tests)
+
+**Jest 30** - framework testowy dla backendu
+
+- Testy serwisów i kontrolerów NestJS
+- Pokrycie kodu ≥80%
+- Integracja z TypeScript przez ts-jest
+
+**@nestjs/testing** - narzędzia testowe NestJS
+
+- TestingModule do tworzenia instancji testowych
+- Mockowanie zależności
+
+**Vitest** (planowane) - framework testowy dla frontendu
+
+- Testy jednostkowe komponentów React
+- Szybsze wykonanie niż Jest
+- Natywna obsługa ES modules
+
+**@testing-library/react** (planowane) - testowanie komponentów
+
+- Testy z perspektywy użytkownika
+- Interakcje i renderowanie UI
+
+**Dodatkowe narzędzia:**
+
+- ts-jest - transpilacja TypeScript w testach
+- supertest - testy HTTP dla kontrolerów (do wdrożenia)
+- @testing-library/user-event - symulacja interakcji (do wdrożenia)
+
+### Testy End-to-End (E2E)
+
+**Playwright** (do wdrożenia) - automatyzacja przeglądarki
+
+- Testy pełnych przepływów użytkownika
+- Wsparcie dla Chrome, Firefox, Safari
+- Headless i headed mode
+
+**@playwright/test** - test runner
+
+- Scenariusze: rejestracja, logowanie, CRUD trackerów
+- Screenshots i trace recording
+
+### Testy Wydajnościowe
+
+**k6** - load testing API
+
+- Throughput: 100 req/s
+- Response time < 200ms dla GET endpoints
+- Skalowalność do 100,000 wpisów
+
+**Lighthouse CI** - audyt wydajności frontendu
+
+- Performance Score ≥ 90
+- First Contentful Paint < 1.5s
+- Time to Interactive < 3s
+
+### Testy Bezpieczeństwa
+
+**OWASP ZAP** - skanowanie bezpieczeństwa
+
+- SQL Injection
+- XSS attacks
+- Penetration testing
+
 ## Architektura
 
 ```

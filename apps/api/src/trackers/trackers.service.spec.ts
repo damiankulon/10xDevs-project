@@ -14,6 +14,7 @@ describe('TrackersService', () => {
   // Mock Supabase client
   const mockSupabaseClient = {
     from: jest.fn(),
+    rpc: jest.fn(),
   };
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
@@ -42,10 +43,10 @@ describe('TrackersService', () => {
     data: { trackers_limit: number } | null,
     error: any = null
   ) => {
-    const selectSingleProfile = jest.fn().mockResolvedValue({ data, error });
+    const maybeSingleProfile = jest.fn().mockResolvedValue({ data, error });
     const isDeletedAtNullProfile = jest
       .fn()
-      .mockReturnValue({ single: selectSingleProfile });
+      .mockReturnValue({ maybeSingle: maybeSingleProfile });
     const eqIdProfile = jest
       .fn()
       .mockReturnValue({ is: isDeletedAtNullProfile });
@@ -104,6 +105,9 @@ describe('TrackersService', () => {
       const profileMock = setupProfileMock({ trackers_limit: 10 });
       const countMock = setupTrackersCountMock(5);
       const insertMock = setupInsertMock(mockCreatedTracker);
+
+      // Mock RPC call for counting trackers
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 5, error: null });
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') return profileMock;
@@ -189,13 +193,16 @@ describe('TrackersService', () => {
       // Create a fresh mock for this specific test
       let trackersCallCount = 0;
 
+      // Mock RPC call returning count at limit
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 10, error: null });
+
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') {
           return {
             select: jest.fn().mockReturnValue({
               eq: jest.fn().mockReturnValue({
                 is: jest.fn().mockReturnValue({
-                  single: jest.fn().mockResolvedValue({
+                  maybeSingle: jest.fn().mockResolvedValue({
                     data: { trackers_limit: 10 },
                     error: null,
                   }),
@@ -272,6 +279,9 @@ describe('TrackersService', () => {
       const countMock = setupTrackersCountMock(5);
       const insertMock = setupInsertMock(trackerWithUnit);
 
+      // Mock RPC call for counting trackers
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 5, error: null });
+
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') return profileMock;
         if (table === 'trackers') return { ...countMock, ...insertMock };
@@ -299,6 +309,9 @@ describe('TrackersService', () => {
       const countMock = setupTrackersCountMock(5);
       const insertMock = setupInsertMock(trackerBoolean);
 
+      // Mock RPC call for counting trackers
+      mockSupabaseClient.rpc.mockResolvedValue({ data: 5, error: null });
+
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'profiles') return profileMock;
         if (table === 'trackers') return { ...countMock, ...insertMock };
@@ -325,21 +338,30 @@ describe('TrackersService', () => {
         },
       ];
 
+      // Create chainable mock methods
+      const createChainableMock = () => {
+        const chainable: any = {
+          eq: jest.fn().mockReturnThis(),
+          or: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnThis(),
+          range: jest.fn().mockResolvedValue({
+            data: mockTrackers,
+            error: null,
+            count: 2,
+          }),
+        };
+        // Make each method return the chainable object
+        Object.keys(chainable).forEach((key) => {
+          if (typeof chainable[key] === 'function' && key !== 'range') {
+            chainable[key] = jest.fn(() => chainable);
+          }
+        });
+        return chainable;
+      };
+
       const trackersMock = {
         select: jest.fn().mockReturnValue({
-          is: jest.fn().mockReturnValue({
-            or: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                order: jest.fn().mockReturnValue({
-                  range: jest.fn().mockResolvedValue({
-                    data: mockTrackers,
-                    error: null,
-                    count: 2,
-                  }),
-                }),
-              }),
-            }),
-          }),
+          is: jest.fn(() => createChainableMock()),
         }),
       };
 
@@ -357,9 +379,11 @@ describe('TrackersService', () => {
           eq: jest.fn().mockReturnValue({
             is: jest.fn().mockReturnValue({
               order: jest.fn().mockReturnValue({
-                limit: jest.fn().mockResolvedValue({
-                  data: null,
-                  error: null,
+                limit: jest.fn().mockReturnValue({
+                  maybeSingle: jest.fn().mockResolvedValue({
+                    data: null,
+                    error: null,
+                  }),
                 }),
               }),
             }),
